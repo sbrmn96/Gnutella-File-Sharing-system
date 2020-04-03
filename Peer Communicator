@@ -1,0 +1,415 @@
+import java.io.*;
+import java.net.*;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Map.Entry;
+
+
+/***
+ * This class is mainly used to handle the request from peers in order to perform operations such as
+ * search for a file name in the list, add a message, search a message, handle queries and file download 
+*@reference: https://github.com/narnimah/Gnutella-Network/tree/master/src/aos_prj_2
+*https://github.com/Arunjegarkal/Gnutella-style-peer-to-peer-P2P-file-sharing-system
+*@author: Shilpa Benarji, Subramanya Prasad
+*/
+ */
+public class peerCommunicator{                                                                    
+//this is a method used to search file names in a list of files and return boolean result
+	public boolean srch(String fname){                            
+		if(P_info.srce.fList.size()!=0){                                             
+			//for(int i = 0; i < P_info.srce.fList.size(); i++){
+				int j = 0;
+				while (j < P_info.srce.fList.size()){
+				if(fname.equals(P_info.srce.fList.get(j))){
+					return true;
+				}
+				j++;
+			}
+		}
+		return false;	
+	}
+	
+//a method called to create instance and start a new thread to add protocol message with message number and message ID as its input parameters
+	public synchronized void MessageAdd(int msgnum, MessageID mes){                  //varta_no = mes
+		AddMsgThread MessageAdd = new AddMsgThread(msgnum, mes);                    //Add_to_Message = MessageAdd
+		Thread th = new Thread(MessageAdd);                                              //thread = th
+		th.start();
+		th = null;
+	}
+	
+//a method called to create instance and start a new thread to search protocol message with message and TTL as its input parameters	
+	public synchronized void MessageSearch(Message msg, int TTL){
+		SearchMsgThread MessageSearch = new SearchMsgThread(msg, TTL);           //message = msg
+		Thread th = new Thread(MessageSearch);
+		th.start();
+		th = null;
+	}
+
+//a method called to create instance and start a new thread in order to search and establish connection with the network
+	public void newquery(MessageID mes, String fname, int TTL){                       //query = newquery
+		qthread newquery = new qthread(mes, fname, TTL);                        
+		Thread th = new Thread(newquery);
+		th.start();
+		th = null;
+	}
+	
+//a method called to create instance and start a new thread as a response to query initiated by peer
+	public void newQueryHit(String fname, MessageID mes, int port_num, String ip_peer, int TTL){                 //hitQuery= newQueryHit
+		QueryHit newQueryHit = new QueryHit(fname, mes, port_num, ip_peer, TTL);                
+		Thread th = new Thread(newQueryHit);
+		th.start();
+		th = null;
+	}
+
+//a method called to create instance and start a new thread to download a file requested by peer	
+	public void FileDownload(String IP_addr, int index, String fname, int port_num){                             //downLoad = FileDownload
+		dwThread dw = new dwThread(IP_addr, index, fname, port_num);
+		Thread th = new Thread(dw);
+		th.start();
+		th = null;
+	}
+
+//a method called to create instance and start a new thread to transfer a file requested by peer	
+	public void FileTransfer(String fname, String IP_addr, int port_num){                  //sendFile = FileTransfer
+		new File_transThread(IP_addr, fname, port_num);
+	}
+	
+//Class to add message
+	class AddMsgThread implements Runnable{                               
+
+		private int msgnum;                                      
+		private MessageID mes;                                 
+		
+		public AddMsgThread(int msgnum, MessageID mes){
+			this.msgnum = msgnum;                                      //set message number       
+			this.mes = mes;                                               //set message
+		}
+		@Override
+		public void run() {
+			
+			P_info.srce.msgT.put(msgnum, mes);                     //insert in message table
+
+		}
+		
+	}
+	
+//class to search message
+	class SearchMsgThread implements Runnable{                              
+		private Message msg;                                           
+		private MessageID mes;
+		private String fname;
+		private int TTL;
+		
+		public SearchMsgThread(Message msg, int TTL){
+			this.msg = msg;                                         //set message
+			this.TTL = TTL;                                         //set time-to-live
+		}
+		@Override
+		public void run() {
+     //get message ID, TTL, file name, and message sequence number
+			mes = msg.getMsg_ID();
+        	TTL = msg.getTTL();
+        	fname = msg.getfname();
+        	
+        	int key = mes.getSeqnum();                       
+        	MessageID ID = null;
+        	NodeClass node = null;
+        	Iterator it_1 = P_info.srce.msgT.entrySet().iterator();
+        	while(it_1.hasNext()){
+        		Entry en = (Entry) it_1.next();
+        		if(en.getKey().equals(key)){
+        			ID = (MessageID) en.getValue();              
+
+        		}
+        	}
+        	
+        	if(ID != null){                                          //routine if ID is not found
+        		int num = ID.getSeqnum();                                         
+        		node = ID.getID_peer();
+        		if(node.equals(P_info.srce.nList)){
+
+        			P_info.srce.q_hit++;	                                  
+        			String f_Ip = msg.getIP_peer();                     
+        			int f_port = msg.getPort();                      
+        			if(f_port != -1){                  			
+        				NodeClass p = new NodeClass(f_Ip, f_port);              
+        				boolean res = false;                                
+        				for(int i = 0; i<P_info.target.p_target.size();i++){
+        					if(P_info.target.p_target.get(i).IP_addr.equals(p.IP_addr)&&
+        							P_info.target.p_target.get(i).port_num == p.port_num){           
+        						res = true;
+        					}
+        				}
+        				
+        				if(!res){
+        					P_info.target.p_target.add(p);
+        				}	
+        			}
+        		}else{
+        			newQueryHit(fname, mes, msg.getPort(), msg.getIP_peer(), TTL);           //call method as a response to query           
+					
+					
+        		}                 		
+        	}
+		}
+		
+	}
+
+//Class for query thread to connect a peer to the network
+	class qthread implements Runnable{                                          
+
+		private MessageID mes;
+		private String cmd;
+		private int TTL;
+		private Message addedMsg;
+		private String fname;
+		
+		public qthread(MessageID mes, String fname, int TTL) {
+			this.cmd = "newquery";                                     //command set to establish query by peer to network                         
+			this.mes = mes;
+			this.TTL = TTL;
+			this.fname = fname;
+		}
+		@Override
+		public void run() {
+			NodeClass peerUpstream = mes.getID_peer();                                       
+			int seq = mes.getSeqnum();                                 
+			if(P_info.srce.adj_node.size()!=0){                                      
+				for(int i = 0; i < P_info.srce.adj_node.size(); i++){
+					if(peerUpstream.p_no.equals(P_info.srce.adj_node.get(i).p_no)     
+							&& peerUpstream.IP_addr.equals(P_info.srce.adj_node.get(i).IP_addr)){
+						
+					}else{
+						
+						P_info.srce.msgno++;
+						MessageID previousMsg = new MessageID(seq,peerUpstream);                   
+						MessageAdd(P_info.srce.msgno, previousMsg);
+						MessageID nextMsg = new MessageID(P_info.srce.msgno,P_info.srce.nList);    
+		                addedMsg = new Message(fname, nextMsg, cmd, TTL);                           
+						
+						try {
+							FileWriter w = new FileWriter("./peerLog.txt",true);                           
+							DateFormat date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");        
+							String t = date.format(new Date());                             
+							w.write(t + "\t\tSend:"+cmd + " " + addedMsg.getMsg_ID().getSeqnum() 
+									+ " " +addedMsg.getfname()+" "+addedMsg.getMsg_ID().getID_peer().p_no+"\t\n");     //write the log of peer 
+							w.close();	
+						} catch (IOException e) {
+							
+							e.printStackTrace();
+						}
+
+		new clThread(addedMsg, P_info.srce.adj_node.get(i).IP_addr, P_info.srce.adj_node.get(i).port_num);  
+					}
+				}
+			}		
+		}
+		
+	}
+	
+//Class for query hit thread as a response to query	
+	class QueryHit implements Runnable{                                    
+		
+		private String cmd;
+		private MessageID mes;
+		private int TTL;
+		private String fname;
+		private Message addedMsg;
+		String ip_peer;
+		int port_num;
+        
+		public QueryHit(String fname, MessageID mes, int port_num, String ip_peer, int TTL){
+			this.cmd = "newQueryHit";                                //command set as response to the query                                 
+			this.fname = fname;
+			this.port_num = port_num;
+			this.ip_peer = ip_peer;
+			this.TTL = TTL;
+			this.mes = mes;	
+			
+		}
+		@Override
+		public void run() {
+			NodeClass peerUpstream = mes.getID_peer();
+			MessageID m_Id = new MessageID(mes.getSeqnum(), P_info.srce.nList);
+
+			addedMsg = new Message(fname, m_Id, cmd, TTL, ip_peer, port_num);
+			
+			try {
+				FileWriter w = new FileWriter("./peerLog.txt",true);
+				DateFormat date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				String t = date.format(new Date());
+				w.write(t + "\t\tSend:"+cmd + " " + addedMsg.getMsg_ID().getSeqnum() 
+						+ " " +addedMsg.getfname()+" "+addedMsg.getMsg_ID().getID_peer().p_no+"\t\n");      //write the log of peer   
+				w.close();	
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+			}
+			new clThread(addedMsg, peerUpstream.IP_addr, peerUpstream.port_num);
+		}
+		
+	}
+	
+//Class to set the command for file download		
+	class dwThread implements Runnable{
+        
+		private String fname;
+		private String cmd;
+		private int index;
+		String IP_addr;
+		private Message addedMsg;
+		int port_num;
+		
+		public dwThread(String IP_addr, int index, String fname, int port_num){
+			this.cmd = "FileDownload";
+			this.fname = fname;
+			this.index = index;
+			this.IP_addr = IP_addr;
+			this.port_num = port_num;
+		}
+		@Override
+		public void run() {
+			
+			addedMsg = new Message(fname, cmd, IP_addr, port_num);
+			new clThread(addedMsg, P_info.target.p_target.get(index-1).IP_addr, ++P_info.target.p_target.get(index-1).port_num);
+		}
+		
+	}
+//Client thread is used to send the file to search to servers which are connected to it.	
+	class clThread extends Thread{                                             
+		private String IP_addr;
+		private int port_num;
+		private Message msg;
+		
+		public clThread(Message msg, String IP_addr, int port_num){
+			this.msg = msg;
+			this.IP_addr = IP_addr;
+			this.port_num = port_num;
+			start();
+		}
+		
+		public void run(){
+			Socket soc = null;                                           
+			ObjectOutputStream out = null;  
+            
+			try {
+				soc = new Socket(IP_addr,port_num);
+				out = new ObjectOutputStream(soc.getOutputStream());
+				out.writeObject(msg);
+				out.flush();
+				
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}finally {   
+                if (out != null)
+					try {
+						out.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}  
+                if (soc != null)
+					try {
+						soc.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}   
+            }
+		}
+	}
+	
+}
+
+//class which handles the file transfer 
+class File_transThread extends Thread{                                             
+	String fname = null;
+	String IP_addr = null;
+	int port_num = 0;
+	public File_transThread(String IP_addr, String fname, int port_num){	
+		this.IP_addr = IP_addr;
+		this.fname = fname;
+		this.port_num = port_num;
+		start();
+	}
+	
+	public void run(){
+
+		int len = 0;                                                           
+        double total = 0 ;                                                
+        byte[] sendBytes = null;  
+        Socket soc = null;  
+        DataOutputStream data_out = null;  
+        FileInputStream f_input = null;  
+        boolean flag = false;
+     
+        try {  
+            File f = new File("./Files/" + fname); 
+            long length = f.length();                                  
+            soc = new Socket(IP_addr,port_num);                
+            data_out = new DataOutputStream(soc.getOutputStream());  
+            f_input = new FileInputStream(f);        
+            sendBytes = new byte[1024];   
+            
+            while ((len = f_input.read(sendBytes, 0, sendBytes.length)) > 0) {  
+                total += len;               
+                System.out.println("Percentage Sent:"+((total/length)*100)+"%");
+                data_out.write(sendBytes, 0, len);  
+                data_out.flush();  
+            }   
+            //
+            if(total==length){  
+                flag = true;  
+                try {
+					FileWriter w = new FileWriter("./peerLog.txt",true);
+					DateFormat date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+					String t = date.format(new Date());
+					w.write(t + "\t\tSend " + fname + "successfully!\t\n");
+					w.close();	
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+            }  
+            
+        }catch (Exception e) {  
+            System.out.println("Error");  
+            flag = false;  
+            e.printStackTrace();    
+        }finally{    
+            if (data_out != null)
+				try {
+					data_out.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}  
+            if (f_input != null)
+				try {
+					f_input.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}     
+            if (soc != null)
+				try {
+					soc.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}      
+        }  
+        System.out.println(flag?"Successful":"Failed");  
+	}
+}
+
+
+
+
