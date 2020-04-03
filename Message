@@ -1,0 +1,148 @@
+import java.io.Serializable;
+
+/**
+*The class handles all the necessary about a query and hitquery messages
+*@reference: https://github.com/narnimah/Gnutella-Network/tree/master/src/aos_prj_2
+*@author: Shilpa Benarji, Subramanya Prasad
+*/
+public class Message implements Serializable
+{
+	private static final long serialVersionUID = 1L;
+	private MessageID msg_Id;                                   //messageID = msg_Id
+    private int port_num;
+	private int TTL;
+	private String fname;                                             //fileName = fname
+	private String IP_peer;                             //peerIP = IP_peer
+	private String cmd;                                 //command = cmd
+	    
+	
+//handles query message 
+	public Message(String fname, MessageID msg_Id, String cmd, int TTL)
+	{
+		this.fname = fname;
+		this.msg_Id = msg_Id;
+        this.cmd = cmd;
+		this.TTL = TTL;
+		
+	}
+
+//handles hitQuery message
+	public Message(String fname, MessageID msg_Id, String cmd, 
+			       int TTL, String IP_peer, int port_num)
+	{   
+	    this.fname = fname;
+		this.msg_Id = msg_Id;
+		this.cmd = cmd;
+		this.TTL = TTL;
+		this.IP_peer = IP_peer;
+		this.port_num = port_num;
+	}
+	
+	//handles download message
+	public Message( String fname, String cmd, String IP_peer, int port_num)
+	{
+	    this.fname = fname;
+		this.cmd = cmd;
+		this.IP_peer = IP_peer;
+		// Set down load port
+		this.port_num = port_num;
+	}
+
+   //sets the command	
+	public void setCmd(String cmd)
+	{
+		this.cmd = cmd;
+	}
+	//command is retrieved
+	public String getCmd()
+	{
+		return cmd;
+	}
+	
+	//sets the message ID
+	public void setMsg_ID(MessageID msg_Id)
+	{
+		this.msg_Id = msg_Id;
+	}
+	
+	//message ID is retrieved
+	public MessageID getMsg_ID()
+	{
+		return msg_Id;
+	}
+	
+	//set Time To Live
+	public void setTTL(int TTL)
+	{
+		this.TTL = TTL;
+	}
+	
+	// Time To Live is retrieved
+	public int getTTL()
+	{
+		return TTL;
+	}
+	
+	//sets file name
+	public void setfname(String fname)
+	{
+		this.fname = fname;
+	}
+	//file name is retrieved
+	public String getfname()
+	{
+		return fname;
+	}
+	
+	//sets Peer Ip
+	public void setIP_peer(String IP_peer)
+	{
+		this.IP_peer = IP_peer;
+	}
+	
+	// Peer IP is retrieved
+	public String getIP_peer()
+	{
+		return IP_peer;
+	}
+	
+	//Port number is set
+	public void setPort(int port_num)
+	{
+		this.port_num = port_num;
+	}
+	
+	//Port number is retrieved
+	public int getPort()
+	{
+		return port_num;
+	}
+}
+
+//The class stores the sequence number and peer related information
+class MessageID implements Serializable{
+	private static final long serialVersionUID = 1L;
+	private int seqnum;                                                       
+	private  NodeClass ID_peer;                                                 
+	
+	public MessageID(int seqnum, NodeClass ID_peer){
+		this.seqnum = seqnum;
+		this.ID_peer = ID_peer;
+	}
+	
+	public void setSeqnum(int seqnum){
+		this.seqnum = seqnum;
+	}
+	
+	public int getSeqnum(){
+		return seqnum;
+	}
+
+	public void setID_peer(NodeClass ID_peer){
+		this.ID_peer = ID_peer;
+	}
+	
+	public NodeClass getID_peer(){
+		return ID_peer;
+	}
+}
