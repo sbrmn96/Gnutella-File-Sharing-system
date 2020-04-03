@@ -1,0 +1,823 @@
+*Peer Code*
+
+
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+
+/**PeerMain acts as both client/server, 
+*handle the request from peers in order to perform operations 
+*such register peer, lookup for file, download the file requested and close the network
+*@reference: https://github.com/narnimah/Gnutella-Network/tree/master/src/aos_prj_2
+*https://github.com/Arunjegarkal/Gnutella-style-peer-to-peer-P2P-file-sharing-system
+*@author: Shilpa Benarji, Subramanya Prasad
+*/
+*/
+
+public class PeerMain 
+{
+//handles the read of the configuration file and searches for adjacent peers	
+	public static void f_read(String config)             
+	{
+		String value1 = new String();            //---------------------
+		String text = new String(); 
+		String text_read = new String();
+        FileWriter wr = null;	
+		boolean boolisfile = false;             //---------------------
+		boolean boolefile = false;           //---------------------
+        		
+		try
+		{
+			wr = new FileWriter("./Log.txt",true);
+			
+			File in_file = new File("./config.txt"); 
+            boolisfile = in_file.isFile();            //check for configuration file exist 
+            boolefile =  in_file.exists();	          	
+			//if(in_file.isFile() && in_file.exists())
+			if(boolisfile == true)       //---------------
+			{ 
+               if(boolefile == true)         //---------------------
+			 { 
+                InputStreamReader r = new InputStreamReader(new FileInputStream(in_file)); 			   
+		        BufferedReader buf = new BufferedReader(r); 
+				value1 = in_file.getPath();             //get the path of congiguration file
+				int j = 3;
+				//int text_len = in_info.length;
+				while((text = buf.readLine()) != null)       //read the file
+				{
+					P_info.srce.p_no++;                         
+					String in_info[] = text.split(" ");                            
+					if(P_info.srce.nList.p_no.equals(in_info[0]))
+					{
+						P_info.srce.nList.IP_addr = in_info[1];
+						P_info.srce.nList.port_num = Integer.parseInt(in_info[2]);
+						if(in_info.length>2) 
+					    
+					    //int text_len = in_info.length;
+					    while (j < in_info.length)
+						//for(int i = 3; i < in_info.length; i++)
+						{
+							BufferedReader read = new BufferedReader(new FileReader(in_file));
+							while((text = read.readLine()) != null)
+							{
+								String text2[] = text.split(" ");                
+								if(in_info[j].equals(text2[0]))
+								{
+									NodeClass n = new NodeClass(text2[0], text2[1], Integer.parseInt(text2[2]));
+									P_info.srce.adj_node.add(n);
+									wr.write(P_info.srce.nList.p_no + " adjacent peer data:");
+									wr.write(n.p_no + " ");
+								}
+							}
+							
+						  j++;	
+						}
+						wr.write("\t\n");
+						
+					}
+				}
+				
+			  }			
+			}
+			else
+			{
+				System.out.println("Search for Configuration file failed. Please check and try again!");
+				wr.write("Search for Configuration file failed. Please check and try again!\r\n");
+			}		
+			wr.close();
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+//method which handles the look up operation of files
+	public void look_file(String dir)              
+	{
+//check whetheer file and directory exist		
+		File f = new File(dir);
+		boolean boolexist = false;             //---------------------
+		boolean booldirectory = false;              //------------------------
+	  try 
+	  {	  
+	    boolexist = f.exists();
+		booldirectory = f.isDirectory();
+		//if(!f.exists() && !f.isDirectory())
+	    if(boolexist == false)
+		{   
+           if(booldirectory == false)
+		   {			   
+		    f.mkdir(); 
+           }			
+		} 
+		String in_file[];                  
+		in_file = f.list();
+		int infile_len = in_file.length;
+		if(infile_len!=0)                     //get the length of the file
+		{
+			int j = 0;
+			//for(int i = 0; i<in_file.length; i++)
+		    while (j < infile_len)
+			{
+				file_reg(in_file[j]);                //call method to register file
+				j++;
+			}
+		}
+      }catch (Exception e)
+	  {
+		e.printStackTrace(); 
+	  }	  
+	}
+	
+//method that handles registration of file in the network	
+	public static void file_reg(String fname)              
+	{
+		FileWriter wr = null;
+		String value2 = new String();
+
+		try
+		{		
+			File f = new File(P_info.srce.dir + File.separator + fname);
+			boolean boolefile = false;
+			//public void ReadFile(){
+                    
+            //        }
+			//if(f.exists())
+		    boolefile = f.exists();
+		    if(boolefile == true)		
+			{
+				wr = new FileWriter("./Log.txt",true);	
+				P_info.srce.fList.add(fname);
+				
+				DateFormat date_form = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");             //pattern = date
+				String t = date_form.format(new Date());
+				System.out.println(fname + ": File successfully registered in the local peer!!");
+				wr.write(fname + ": File successfully registered in the local peer, TimeStamp: " +t + "\r\n");
+				wr.close();	
+				
+			}
+			else
+			{
+				System.out.println(fname+"File does not exist in any peer!");
+			}	
+
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+//method that handles deregistration of file from the network	
+	public static void file_dereg(String fname)               
+	{
+		FileWriter wr = null;
+		boolean boolefile = false;
+		try
+		{	
+		  //  public void ReadFile{
+				
+			//}
+			wr = new FileWriter("./Log.txt",true);
+			P_info.srce.fList.remove(fname);		
+			DateFormat date_form = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");
+			String t = date_form.format(new Date());
+			System.out.println(fname + " :File successfully is de-registered!");
+			wr.write(fname + " :File successfully de-registered, TimeStamp: " +t + "\r\n");
+			wr.close();	
+			
+			
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+//establish connection between peers
+	public void communicator(peerCommunicator connect , boolean isBatchMode, String condense_infile, String bType, String condense_outfile, String txt3) throws IOException {
+	
+		boolean exit = false;	
+		String fname = null;
+		BufferedReader buf_in = new BufferedReader(new InputStreamReader(System.in));          
+        int ch;
+		while(exit != true)
+		{       
+                        System.out.println("Welcome to Gnutella peer connection!!!");
+                        System.out.println("Please choose the below options");
+			            System.out.println("\n1.Register Peer");
+                        System.out.println("\n2.Lookup the files and download in selected peer");
+                        System.out.println("\n3.Close");
+                        ch = Integer.parseInt(buf_in.readLine());
+						if (ch == 1)
+						{
+							//regPeer();
+                             ServerSocket soc = null;              		
+				System.out.println("Enter the peer you want to register with the server: the example is shown as below");
+                System.out.println("p1/p2/p3...");
+				P_info.srce.nList.p_no = buf_in.readLine();
+				P_info.init();
+				f_read(P_info.srce.config);
+				                       
+			    try
+			    {
+			    	soc = new ServerSocket(P_info.srce.nList.port_num);
+			    	System.out.println("\nServer successfully connected...!!!");
+			    	new Peer_Thread(connect, soc);
+			    	System.out.println("\nThe files are successfully registered!");
+			    	look_file(P_info.srce.dir);	                                 
+			    	
+			    	if (isBatchMode == true) {
+						// run the thread
+			    		//System.out.println("control is in this if method");                    //-------------------------
+						jobBatch b_thread = new jobBatch(connect, condense_infile, bType, condense_outfile, txt3);
+						b_thread.start();                  
+			    	}
+			    }
+			    catch(IOException e)
+			    {
+			    	e.printStackTrace();
+			    }						
+						}
+                        else if (ch == 2)
+                        {
+							//lookDownload();
+                             P_info.target.p_target = new ArrayList<NodeClass>();                       
+				P_info.srce.q_hit = 0;                                   
+				System.out.println("Please enter the file you want to lookup and download:");
+				fname = buf_in.readLine();				
+				int n1 = P_info.srce.msgno + 1;                         
+				MessageID sequence = new MessageID(n1, P_info.srce.nList);                 
+				connect.newquery(sequence, fname, P_info.srce.TTL-1);                
+				
+				long rt = 0;                                   
+				long start_time = System.currentTimeMillis();               
+				long  thr_time = P_info.srce.threshold_time;
+				while(rt< thr_time )
+				{
+					long end_time = System.currentTimeMillis();
+					rt = end_time - start_time;
+				}
+				
+				if(P_info.target.p_target.size()!=0)                      
+				{
+					int i1 = 0;                               
+					int i_num = 0;                       
+					System.out.println(fname + " The requested files are found in the following peers!");
+                                        System.out.println("\nWhat to you want to do further? please choose from below options");
+					System.out.println("\n1.Request to Download the file");
+                                        System.out.println("\n2.Cancel");
+					
+					int ch1 = Integer.parseInt(buf_in.readLine());               //choice = ch1
+					
+					System.out.println(ch1);
+					
+					if (ch1 == 1)
+					{
+						System.out.println("Here is the list of peers!!");
+						int j = 0;
+						//for(int i=0; i<P_info.target.p_target.size(); i++)
+						while (j < P_info.target.p_target.size())	
+						{
+							//i = i + 1;
+							j = j + 1;
+				 System.out.println(i1 + ":" + P_info.target.p_target.get(j).IP_addr + " " + P_info.target.p_target.get(j).port_num);
+				           j++;
+						}
+						System.out.println("Choose the peer you want to download the file from:");
+						i_num = Integer.parseInt(buf_in.readLine());
+						new method_d(P_info.srce.nList.port_num+1,fname);                  //DThread = method_d
+				connect.FileDownload(P_info.srce.nList.IP_addr, i_num, fname, P_info.srce.nList.port_num+1);	
+						//break;
+					}
+					//break;			
+				}
+				else
+				{
+					System.out.println(fname + " The file search was unsuccessful, try again!!");
+				}							
+						}	
+                        else
+                        {
+							//peerclose();
+							exit = true;
+				            System.exit(0);
+							
+						}							
+		/*	switch(ch)
+			{
+			case 1:
+			{			
+                regPeer();	
+				break;
+			}
+			
+			case 2:
+			{
+				lookDownload();	
+				break;
+			}
+			
+			case 3:
+			{    
+			    peerclose();
+				break;
+			}
+
+			default:
+				break;
+			} */
+		}
+		
+//method that handles registration of peers		
+     /*  public void regPeer()
+		{		
+                ServerSocket soc = null;              		
+				System.out.println("Enter the peer you want to register with the server: the example is shown as below");
+                System.out.println("p1/p2/p3...");
+				P_info.srce.nList.p_no = buf_in.readLine();
+				P_info.init();
+				f_read(P_info.srce.config);
+				                       
+			    try
+			    {
+			    	soc = new ServerSocket(P_info.srce.nList.port_num);
+			    	System.out.println("\nServer successfully connected...!!!");
+			    	new Peer_Thread(connect, soc);
+			    	System.out.println("\nThe files are successfully registered!");
+			    	look_file(P_info.srce.dir);	                                 
+			    	
+			    	if (isBatchMode == true) {
+						// run the thread
+			    		//System.out.println("control is in this if method");                    //-------------------------
+						jobBatch b_thread = new jobBatch(connect, condense_infile, bType, condense_outfile, txt3);
+						b_thread.start();                  
+			    	}
+			    }
+			    catch(IOException e)
+			    {
+			    	e.printStackTrace();
+			    }
+		} 	
+        
+//method that handles lookup and download of files		
+        public void lookDownload()
+		{
+				P_info.target.p_target = new ArrayList<NodeClass>();                       
+				P_info.srce.q_hit = 0;                                   
+				System.out.println("Please enter the file you want to lookup and download:");
+				fname = buf_in.readLine();				
+				int n1 = P_info.srce.msgno + 1;                         
+				MessageID sequence = new MessageID(n1, P_info.srce.nList);                 
+				connect.newquery(sequence, fname, P_info.srce.TTL-1);                
+				
+				long rt = 0;                                   
+				long start_time = System.currentTimeMillis();               
+				long  thr_time = P_info.srce.threshold_time;
+				while(rt< thr_time )
+				{
+					long end_time = System.currentTimeMillis();
+					rt = end_time - start_time;
+				}
+				
+				if(P_info.target.p_target.size()!=0)                      
+				{
+					int i1 = 0;                               
+					int i_num = 0;                       
+					System.out.println(fname + " The requested files are found in the following peers!");
+                                        System.out.println("\nWhat to you want to do further? please choose from below options");
+					System.out.println("\n1.Request to Download the file");
+                                        System.out.println("\n2.Cancel");
+					
+					int ch1 = Integer.parseInt(buf_in.readLine());               //choice = ch1
+					
+					System.out.println(ch1);
+					
+					if (ch1 == 1)
+					{
+						System.out.println("Here is the list of peers!!");
+						int j = 0;
+						//for(int i=0; i<P_info.target.p_target.size(); i++)
+						while (j < P_info.target.p_target.size())	
+						{
+							//i = i + 1;
+							j = j + 1;
+				 System.out.println(i1 + ":" + P_info.target.p_target.get(j).IP_addr + " " + P_info.target.p_target.get(j).port_num);
+				           j++;
+						}
+						System.out.println("Choose the peer you want to download the file from:");
+						i_num = Integer.parseInt(buf_in.readLine());
+						new method_d(P_info.srce.nList.port_num+1,fname);                  //DThread = method_d
+				connect.FileDownload(P_info.srce.nList.IP_addr, i_num, fname, P_info.srce.nList.port_num+1);	
+						//break;
+					}
+					//break;			
+				}
+				else
+				{
+					System.out.println(fname + " The file search was unsuccessful, try again!!");
+				}
+	    }	
+		
+//method that closes the network		
+        public void peerclose()
+		{
+				exit = true;
+				System.exit(0);
+		}	*/	
+	}
+	
+	//method that handles registration of peers		
+    /*    public void regPeer()
+		{		
+		        boolean exit = false;	
+		        String fname = null;
+		        BufferedReader buf_in = new BufferedReader(new InputStreamReader(System.in));          
+                //int ch;
+                ServerSocket soc = null;              		
+				System.out.println("Enter the peer you want to register with the server: the example is shown as below");
+                System.out.println("p1/p2/p3...");
+				P_info.srce.nList.p_no = buf_in.readLine();
+				P_info.init();
+				f_read(P_info.srce.config);
+				                       
+			    try
+			    {
+			    	soc = new ServerSocket(P_info.srce.nList.port_num);
+			    	System.out.println("\nServer successfully connected...!!!");
+			    	new Peer_Thread(connect, soc);
+			    	System.out.println("\nThe files are successfully registered!");
+			    	look_file(P_info.srce.dir);	                                 
+			    	
+			    	if (isBatchMode == true) {
+						// run the thread
+			    		//System.out.println("control is in this if method");                    //-------------------------
+						jobBatch b_thread = new jobBatch(connect, condense_infile, bType, condense_outfile, txt3);
+						b_thread.start();                  
+			    	}
+			    }
+			    catch(IOException e)
+			    {
+			    	e.printStackTrace();
+			    }
+		}	
+        
+//method that handles lookup and download of files		
+        public void lookDownload()
+		{       
+		        boolean exit = false;	
+		        String fname = null;
+		        BufferedReader buf_in = new BufferedReader(new InputStreamReader(System.in));          
+        
+				P_info.target.p_target = new ArrayList<NodeClass>();                       
+				P_info.srce.q_hit = 0;                                   
+				System.out.println("Please enter the file you want to lookup and download:");
+				fname = buf_in.readLine();				
+				int n1 = P_info.srce.msgno + 1;                         
+				MessageID sequence = new MessageID(n1, P_info.srce.nList);                 
+				connect.newquery(sequence, fname, P_info.srce.TTL-1);                
+				
+				long rt = 0;                                   
+				long start_time = System.currentTimeMillis();               
+				long  thr_time = P_info.srce.threshold_time;
+				while(rt< thr_time )
+				{
+					long end_time = System.currentTimeMillis();
+					rt = end_time - start_time;
+				}
+				
+				if(P_info.target.p_target.size()!=0)                      
+				{
+					int i1 = 0;                               
+					int i_num = 0;                       
+					System.out.println(fname + " The requested files are found in the following peers!");
+                                        System.out.println("\nWhat to you want to do further? please choose from below options");
+					System.out.println("\n1.Request to Download the file");
+                                        System.out.println("\n2.Cancel");
+					
+					int ch1 = Integer.parseInt(buf_in.readLine());               //choice = ch1
+					
+					System.out.println(ch1);
+					
+					if (ch1 == 1)
+					{
+						System.out.println("Here is the list of peers!!");
+						int j = 0;
+						//for(int i=0; i<P_info.target.p_target.size(); i++)
+						while (j < P_info.target.p_target.size())	
+						{
+							//i = i + 1;
+							j = j + 1;
+				 System.out.println(i1 + ":" + P_info.target.p_target.get(j).IP_addr + " " + P_info.target.p_target.get(j).port_num);
+				           j++;
+						}
+						System.out.println("Choose the peer you want to download the file from:");
+						i_num = Integer.parseInt(buf_in.readLine());
+						new method_d(P_info.srce.nList.port_num+1,fname);                  //DThread = method_d
+				connect.FileDownload(P_info.srce.nList.IP_addr, i_num, fname, P_info.srce.nList.port_num+1);	
+						//break;
+					}
+					//break;			
+				}
+				else
+				{
+					System.out.println(fname + " The file search was unsuccessful, try again!!");
+				}
+	    }	
+		
+//method that closes the network		
+        public void peerclose()
+		{
+			    boolean exit = false;
+				exit = true;
+				System.exit(0);
+		}	*/	
+	
+		
+	public static void main(String args[])
+	{
+		PeerMain p = new PeerMain();
+		peerCommunicator con = new peerCommunicator();
+		new method_w(P_info.srce.dir);
+		try 
+		{
+			boolean isBatchMode = (args.length == 4);
+			String condense_infile = null;
+			String bType = null;
+			String condense_outfile = null;
+			String txt3 = null;
+			if (isBatchMode == true) {
+				condense_infile = args[0];
+				bType = args[1];
+				condense_outfile = args[2];
+				txt3 = args[3];
+			}
+			p.communicator(con, isBatchMode, condense_infile, bType, condense_outfile, txt3);	
+		} 
+		catch (IOException e) 
+		{
+			e.printStackTrace();
+		}	
+	}
+}
+
+//class that handles the file list to check foe directory and the file
+class method_w extends Thread {                       
+	String dir = null;
+
+	public method_w(String dir){
+		this.dir = dir;
+		
+		start();
+	}
+	
+	public void run()
+	{
+		Timer cl = new Timer();                  
+		cl.schedule(new TimerTask()
+		{
+			@Override
+			public void run() 
+			{	
+				if(P_info.srce.fList.size()!=0)
+				{
+					for(int i = 0; i < P_info.srce.fList.size(); i++)
+					{
+						File f = new File(dir + File.separator + P_info.srce.fList.get(i));
+						if(!f.exists())
+						{
+							System.out.println(P_info.srce.fList.get(i)+" discarded!");
+							PeerMain.file_dereg(P_info.srce.fList.get(i));	
+						}
+					}
+				}
+			}
+		}, 1000, 100);    
+	}
+}
+
+
+class P_info                                              
+{
+	public static class srce                            
+	{
+		public static int msgno;             
+		public static int p_no;                    
+		public static int q_hit;           
+		public static int TTL = 3;	
+		public static int threshold_time = 3000;                 
+		public static NodeClass nList = new NodeClass();                
+		public static String dir = "./Files";               
+		public static String config = "./config.txt";        
+		public static ArrayList<NodeClass> adj_node = new ArrayList<NodeClass>();            
+		public static ArrayList<String> fList = new ArrayList<String>();              
+		public static ConcurrentHashMap<Integer,MessageID> msgT = new ConcurrentHashMap<Integer,MessageID>();    
+	}
+	
+	public static class target                           
+	{
+		public static ArrayList<NodeClass> p_target = new ArrayList<NodeClass>();              
+	}
+	
+	public static void init()                     
+	{
+		P_info.srce.msgno = 0;
+		P_info.srce.p_no = 0;
+		P_info.srce.q_hit = 0;
+		P_info.srce.adj_node = new ArrayList<NodeClass>();
+		P_info.srce.msgT = new ConcurrentHashMap<Integer,MessageID>();
+		P_info.target.p_target = new ArrayList<NodeClass>();
+	}
+}
+
+class NodeClass implements Serializable                                       //NodeClass = NodeClass
+{
+	private static final long serialVersionUID = 1L;	
+	public String p_no;                                            //peerName = p_no
+	public String IP_addr;
+	public int port_num;
+	
+	public NodeClass()
+	{
+		
+	}
+	
+	public NodeClass(String IP_addr, int port_num)
+	{
+		this.IP_addr = IP_addr;
+		this.port_num = port_num;
+	}
+	
+	public NodeClass(String p_no, String IP_addr, int port_num)
+	{
+		this.p_no = p_no;
+		this.IP_addr = IP_addr;
+		this.port_num = port_num;
+	}
+
+	public void node_information()                   //NodeInfo =node_information
+	{
+		System.out.println(p_no + " " + IP_addr + " " + port_num);
+	}
+}
+
+
+//class that handles the downloading the files
+class method_d extends Thread                        
+{
+	int port_num;
+	String fname;
+	public method_d(int port_num, String fname)
+	{
+		this.port_num = port_num;
+		this.fname = fname;
+		start();
+	}
+	
+	public void run()
+	{
+		try 
+		{
+			ServerSocket srv = new ServerSocket(port_num);                     
+			Socket soc = srv.accept();
+			r_file(soc, fname);                                       
+			soc.close();
+			srv.close();
+			} 
+		catch (IOException e) 
+		{
+			e.printStackTrace();
+		} 
+	}
+
+//handles the read of the file	
+	public static void r_file(Socket soc, String fname) throws IOException
+	{
+		byte[] recieveByte = null;                                               
+        int l = 0;                                     
+        DataInputStream in_data = null;                   
+        FileOutputStream f_data = null;                     
+        String fPath = "./Files/" + fname;             
+        try 
+        {  
+            in_data = new DataInputStream(soc.getInputStream());  
+            File f = new File("./Files");  
+            if(!f.exists())
+            {  
+                f.mkdir();    
+            }  
+            f_data = new FileOutputStream(new File(fPath));      
+            recieveByte = new byte[1024];     
+            System.out.println("Display file " + fname);
+            while ((l = in_data.read(recieveByte, 0, recieveByte.length)) > 0) 
+            {  
+                f_data.write(recieveByte, 0, l);  
+                f_data.flush();      
+            }  
+            System.out.println("Finish receive:"+fPath);  
+        } 
+        finally 
+        {  
+            if (f_data != null)  
+                f_data.close();  
+            if (in_data != null)  
+                in_data.close();  
+            if (soc != null)  
+                soc.close();   
+        }  
+	}
+}
+
+//class that handles the batch job
+class jobBatch extends Thread {                                                //BatchClientOptions = jobBatch
+	private static final String SEARCH_ENUM = "srch";
+	private static final double SECS_CONVERTER = 1_000_000_000.0;
+
+	String condense_infile;
+	String bType;                            //bType = bType
+	String condense_outfile;
+	String txt3;
+	peerCommunicator connect;
+
+	public jobBatch(peerCommunicator connect, String condense_infile, String bType,
+			String condense_outfile, String txt3) {
+		this.connect = connect;
+		this.condense_infile = condense_infile;
+		this.bType = bType;
+		this.condense_outfile = condense_outfile;
+		this.txt3 = txt3;
+	}
+
+	public void run() {
+		ArrayList<String> f_names = new ArrayList<String>();                  //fileNames = f_names
+
+		try (Stream<String> st = Files.lines(Paths.get(condense_infile))) {             //stream = st
+			st.forEach(line -> f_names.add(line));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		double timeDiff = 0;                           //secondsDiff = timeDiff
+		if (SEARCH_ENUM.equals(bType)) {
+			long timeStart = System.nanoTime();                //start = timeStart
+			for (String fname : f_names) {
+				P_info.target.p_target = new ArrayList<NodeClass>();
+				P_info.srce.q_hit = 0;
+				int n = P_info.srce.msgno + 1;                            //num = n
+				MessageID sequence = new MessageID(n, P_info.srce.nList);
+				connect.newquery(sequence, fname, P_info.srce.TTL - 1);            
+			}
+			long timeEnd = System.nanoTime();                                             //end = timeEnd
+			timeDiff = (timeEnd - timeStart) / SECS_CONVERTER;
+		} else {
+			long timeStart = System.nanoTime();
+			for (String fname : f_names) {
+				//P_info.target.p_target = new ArrayList<NodeClass>();
+				P_info.srce.q_hit = 0;
+				int n = P_info.srce.msgno + 1;
+				MessageID sequence = new MessageID(n, P_info.srce.nList);
+				connect.newquery(sequence, fname, P_info.srce.TTL - 1);
+				//if (P_info.target.p_target.size() != 0) {
+				int i_num = 1;
+				new method_d(P_info.srce.nList.port_num + 1, fname);
+				connect.FileDownload(P_info.srce.nList.IP_addr, i_num, fname, ++P_info.srce.nList.port_num);					
+				//}
+			}
+			long timeEnd = System.nanoTime();
+			timeDiff = (timeEnd - timeStart) / SECS_CONVERTER;
+		}
+		timeDiff = f_names.size() / timeDiff;
+
+		BufferedWriter wr = null;
+		try {
+			wr = new BufferedWriter(new FileWriter(condense_outfile, true));
+			String text4 = txt3 + " " + String.valueOf(timeDiff) + "\n";                //textToAppend = text4
+			wr.write(text4);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (wr != null) {
+				try {
+					wr.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		System.out.println("Time took to " + bType + "  " + f_names.size() + ">>" + ">>" + timeDiff);
+	}
+}
